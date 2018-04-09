@@ -44,6 +44,7 @@ def draw_matches(img1, kp1, img2, kp2, matches, color=None):
         print(c)
         # So the keypoint locs are stored as a tuple of floats.  cv2.line(), like most other things,
         # wants locs as a tuple of ints.
+        # query index: left pic ;;; train index: right pic
         end1 = tuple(np.round(kp1[m.queryIdx].pt).astype(int))
         end2 = tuple(np.round(kp2[m.trainIdx].pt).astype(int) + np.array([img1.shape[1], 0]))
         cv.line(new_img, end1, end2, c, thickness)
@@ -54,10 +55,9 @@ def draw_matches(img1, kp1, img2, kp2, matches, color=None):
 
 def draw_matches_vertical_rgb(img1, kp1, img2, kp2, matches, color=None):
     """Draws lines between matching keypoints of two images.
-    Keypoints not in a matching pair are not drawn.
-    Places the images side by side in a new image and draws circles
-    around each keypoint, with line segments connecting matching pairs.
-    You can tweak the r, thickness, and figsize values as needed.
+    see draw_matches(img1, kp1, img2, kp2, matches, color=None)
+    This function does exact thing as draw_matches(...), except it will
+    generate the map vertically.
     Args:
         img1: An openCV image ndarray in a grayscale or color format.
         kp1: A list of cv2.KeyPoint objects for img1.
@@ -72,6 +72,8 @@ def draw_matches_vertical_rgb(img1, kp1, img2, kp2, matches, color=None):
     """
     # We're drawing them side by side.  Get dimensions accordingly.
     # Handle both color and grayscale images.
+    assert img1.shape[2] == 3, "Need enter a rgb img. "
+    assert img2.shape[2] == 3, "Need enter a rgb img. "
     new_shape = (img1.shape[0] + img2.shape[0], max(img1.shape[1], img2.shape[1]), 3)
     new_img = np.zeros(new_shape, type(img1.flat[0]))
     # Place images onto the new image.
@@ -88,7 +90,6 @@ def draw_matches_vertical_rgb(img1, kp1, img2, kp2, matches, color=None):
         else:
             c = color
         c = (int(c[0]), int(c[1]), int(c[2]))
-        print(c)
         # So the keypoint locs are stored as a tuple of floats.  cv2.line(), like most other things,
         # wants locs as a tuple of ints.
         end1 = tuple(np.round(kp1[m.queryIdx].pt).astype(int))
