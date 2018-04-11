@@ -41,7 +41,6 @@ def draw_matches(img1, kp1, img2, kp2, matches, color=None):
         else:
             c = color
         c = (int(c[0]), int(c[1]), int(c[2]))
-        print(c)
         # So the keypoint locs are stored as a tuple of floats.  cv2.line(), like most other things,
         # wants locs as a tuple of ints.
         # query index: left pic ;;; train index: right pic

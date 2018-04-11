@@ -3,9 +3,11 @@ import numpy as np
 import os
 from time import gmtime, strftime
 from draw_match import draw_matches_vertical_rgb
-from config import text_color, text_pos, text_size
+import config
+from config import text_color, text_pos, text_size, is_output_img
 from optimize import calculate_perspective_matrix
-from match import refine_match_moving, refine_match_without_car
+from match import refine_match_moving, refine_match_without_car, refine_match_mask_filter
+config.is_output_img = True
 time_stamp = strftime("%Y-%m-%d-%H-%M-%S", gmtime())
 outputs_dir = os.path.join("./outputs/", time_stamp)
 if not os.path.exists(outputs_dir):
@@ -32,10 +34,11 @@ bf = cv.BFMatcher_create(crossCheck=True)
 matches = bf.match(des_img_65, des_img_66)
 refine_match_moving(matches, keys_img_65, keys_img_66, center_avg)
 refine_match_without_car(matches, keys_img_65, keys_img_66)
+refine_match_mask_filter(matches, keys_img_65, keys_img_66, "./mask/65.jpg", "./mask/66.jpg")
 matches = sorted(matches, key=lambda x: x.distance)
 x1 = np.zeros(shape=(0, 2))
 x2 = np.zeros(shape=(0, 2))
-for m in matches[0:4]:
+for m in matches[0:10]:
     pt1 = np.array(keys_img_65[m.queryIdx].pt)
     pt2 = np.array(keys_img_66[m.trainIdx].pt)
     x1 = np.vstack((x1, pt1.reshape(1, 2)))
@@ -48,7 +51,10 @@ cv.imwrite(os.path.join(outputs_dir, "img_nxt.jpg"), img_nxt)
 cv.imwrite(os.path.join(outputs_dir, "overlap.jpg"), img_nxt*0.5+p_img*0.5)
 # end1 = tuple(kp1[m.queryIdx].pt)
 # end2 = tuple(kp2[m.trainIdx].pt)
-for i in (1, 4, 5, 8, 10, 20):
+# 1, 4, 5, 8, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100
+for i in (1, 5, 10):
+    if not config.is_output_img:
+        break
     match_img = draw_matches_vertical_rgb(img_pre, keys_img_65, img_nxt, keys_img_66, matches[: i])
     cv.putText(match_img, "pre", (text_pos, text_pos),
                cv.FONT_HERSHEY_COMPLEX, text_size, (0, 255, 0), 2, cv.LINE_4)
@@ -57,8 +63,9 @@ for i in (1, 4, 5, 8, 10, 20):
     cv.putText(match_img, "matched_num_" + str(i), (text_pos, text_pos*2),
                cv.FONT_HERSHEY_COMPLEX, text_size, text_color, 2, cv.LINE_4)
     cv.imwrite(os.path.join(outputs_dir, str(i) + "_map.jpg"), match_img)
-match_img = draw_matches_vertical_rgb(img_pre, keys_img_65, img_nxt, keys_img_66, matches)
-cv.imwrite(os.path.join(outputs_dir, str(len(matches)) + "_map_full.jpg"), match_img)
+if config.is_output_img:
+    match_img = draw_matches_vertical_rgb(img_pre, keys_img_65, img_nxt, keys_img_66, matches)
+    cv.imwrite(os.path.join(outputs_dir, str(len(matches)) + "_map_full.jpg"), match_img)
 '''
 key points 是 list，里面都是Keypoint对象
 descriptor 是ndarray
