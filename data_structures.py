@@ -5,6 +5,14 @@ import cv2 as cv
 # train descriptor index,
 # train image index,
 # and distance between descriptors.
+
+# match 使用了欧氏距离
+# print(matches[0])
+# print(type(matches[0]))
+# m = matches[0]
+# print(m.distance, m.queryIdx, m.trainIdx)
+# dist = np.linalg.norm(des_img_65[1862] - des_img_66[1909])
+# print("dist: ", dist)
 cv.DMatch()
 
 # KeyPoint

@@ -6,6 +6,12 @@ output_img_name = "concat_img.jpg"
 pics_names = os.listdir(pics_path)
 if pics_names.count(output_img_name) > 0:
     pics_names.remove(output_img_name)
+pic_index = 0
+while pic_index < len(pics_names):
+    if type(pics_names[pic_index].split("-")[0]) != type(1):
+        del pics_names[pic_index]
+        pic_index -= 1
+    pic_index += 1
 pics_names.sort(key=lambda x: int(x.split("_")[0]))
 print(pics_names)
 img_height = cv.imread(os.path.join(pics_path, pics_names[0]), cv.IMREAD_UNCHANGED).shape[0]
