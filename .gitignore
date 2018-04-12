@@ -2,3 +2,6 @@
 *.xml
 *.iml
 *.png
+*.txt
+perspective.py
+precodes.txt

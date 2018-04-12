@@ -83,3 +83,15 @@ def refine_match_mask_filter(matches, kp1, kp2, mask_dir1, mask_dir2):
             continue
         i += 1
 
+
+def refine_match_distance(matches, kp1, kp2):
+    i = 0
+    while i < len(matches):
+        m = matches[i]
+        end1 = np.array(kp1[m.queryIdx].pt)
+        end2 = np.array(kp2[m.trainIdx].pt)
+        if np.linalg.norm(end1 - end2) > config.max_norm_dis:
+            del matches[i]
+            i -= 1
+        i += 1
+
