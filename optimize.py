@@ -27,7 +27,7 @@ def calculate_perspective_matrix(x1, x2):
         x2 = np.hstack((x2, np.ones(shape=(x2.shape[0], 1), dtype=np.float32)))
     # calculate initial matrix
     init_matrix = cv.getPerspectiveTransform(np.float32(x1[0:4, 0:2]), np.float32(x2[0:4, 0:2]))
-    result = minimize(fun=model, x0=init_matrix.flat[0:8], args=(x1.T, x2.T), method='Nelder-Mead', tol=0.00001)
+    result = minimize(fun=model, x0=init_matrix.flat[0:8], args=(x1.T, x2.T), method='Nelder-Mead', tol=0.0001)
     # print(minimize(fun=model, x0=np.random.randint(low=-10, high=10, size=8),
     #                args=(x1.T, x2.T), method='Nelder-Mead',
     #                tol=0.00001).x)

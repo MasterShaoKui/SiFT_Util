@@ -8,7 +8,8 @@ from config import text_color, text_pos, text_size, is_output_img
 from optimize import calculate_perspective_matrix
 from match import refine_match_moving, \
     refine_match_without_car, refine_match_mask_filter, refine_match_distance
-config.is_output_img = False
+import bev
+config.is_output_img = True
 time_stamp = strftime("%Y-%m-%d-%H-%M-%S", gmtime())
 outputs_dir = os.path.join("./outputs/", time_stamp)
 if not os.path.exists(outputs_dir):
@@ -39,18 +40,52 @@ refine_match_distance(matches, keys_img_65, keys_img_66)
 matches = sorted(matches, key=lambda x: x.distance)
 x1 = np.zeros(shape=(0, 2))
 x2 = np.zeros(shape=(0, 2))
-for m in matches[0:55]:
+for m in matches:
     pt1 = np.array(keys_img_65[m.queryIdx].pt)
     pt2 = np.array(keys_img_66[m.trainIdx].pt)
     x1 = np.vstack((x1, pt1.reshape(1, 2)))
     x2 = np.vstack((x2, pt2.reshape(1, 2)))
 matrix = calculate_perspective_matrix(x1, x2)
 p_img = cv.warpPerspective(img_pre, matrix, (img_pre.shape[1], img_pre.shape[0]))
+# Based on bev, align two bev pics.
+points_65 = bev.get_bev_base_points("./bev_pics/65.jpg")
+img_bev_65 = cv.imread("./bev_pics/65.jpg", cv.IMREAD_UNCHANGED)
+for i, p in enumerate(points_65):
+    # cv.circle(img_bev_65, (int(p[0]), int(p[1])), 5, (0, 0, 255), 6)
+    cv.putText(img_bev_65, str(i), (int(p[0]), int(p[1])),
+               cv.FONT_HERSHEY_COMPLEX, text_size, (0, 255, 0), 2, cv.LINE_4)
+# points_65 = np.hstack((points_65, np.ones(shape=(points_65.shape[0], 1), dtype=np.float32)))
+points_65 = np.float32([points_65])
+dst = cv.transform(points_65, np.linalg.inv(np.loadtxt("./t173_pm/65.txt", dtype=np.float32)))[0]
+dst = dst / dst[:, 2].reshape(9, 1)
+dst = dst[:, 0:2]
+for p in dst:
+    cv.circle(img_pre, (int(p[0]), int(p[1])), 5, (0, 0, 255), 6)
+dst = cv.transform(np.float32([dst]), matrix)[0]
+dst = dst / dst[:, 2].reshape(9, 1)
+dst = dst[:, 0:2]
+for p in dst:
+    cv.circle(img_nxt, (int(p[0]), int(p[1])), 5, (0, 0, 255), 6)
+dst = cv.transform(np.float32([dst]), np.loadtxt("./t173_pm/65.txt", dtype=np.float32))[0]
+dst = dst / dst[:, 2].reshape(9, 1)
+dst = dst[:, 0:2]
+img_66_bev = cv.imread("./bev_pics/66.jpg", cv.IMREAD_UNCHANGED)
+for i, p in enumerate(dst):
+    # cv.circle(img_66_bev, (int(p[0]), int(p[1])), 5, (0, 0, 255), 6)
+    cv.putText(img_66_bev, str(i), (int(p[0]), int(p[1])),
+               cv.FONT_HERSHEY_COMPLEX, text_size, (0, 255, 0), 2, cv.LINE_4)
+cv.imwrite(os.path.join(outputs_dir, "65_bev.jpg"), img_bev_65)
+cv.imwrite(os.path.join(outputs_dir, "pre.jpg"), img_pre)
+cv.imwrite(os.path.join(outputs_dir, "nxt.jpg"), img_nxt)
+cv.imwrite(os.path.join(outputs_dir, "66_bev.jpg"), img_66_bev)
+# End alignment.
 cv.imwrite(os.path.join(outputs_dir, "perspective.jpg"), p_img)
 cv.imwrite(os.path.join(outputs_dir, "img_nxt.jpg"), img_nxt)
 cv.imwrite(os.path.join(outputs_dir, "overlap.jpg"), img_nxt*0.5+p_img*0.5)
 # 1, 4, 5, 8, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100
-for i in (1, 5, 10, 50, 100, 150, 200):
+for i in (1, 5, 10, 15, 20, 30, 50, 100):
+    if i > len(matches):
+        break
     if not config.is_output_img:
         break
     match_img = draw_matches_vertical_rgb(img_pre, keys_img_65, img_nxt, keys_img_66, matches[: i])

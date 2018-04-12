@@ -58,15 +58,19 @@ def refine_match_mask_filter(matches, kp1, kp2, mask_dir1, mask_dir2):
         if end1[0] - margin <= 0 or end1[0] + margin >= mask1.shape[0] \
                 or end1[1] - margin <= 0 or end1[1] + margin >= mask1.shape[1]:
             del matches[i]
-            i -= 1
             continue
-        bool_map = mask1[end1[0]-margin:end1[0]+margin, end1[1]-margin:end1[1]+margin] == \
-            np.array(config.mask_car_color, dtype=np.int)
-        if True in bool_map.flat:
+        if np.array(config.mask_car_color, dtype=np.int) in \
+            mask1[end1[0]-margin:end1[0]+margin, end1[1]-margin:end1[1]+margin]:
             del matches[i]
-            i -= 1
             continue
         i += 1
+        # bool_map = mask1[end1[0]-margin:end1[0]+margin, end1[1]-margin:end1[1]+margin] == \
+        #     np.array(config.mask_car_color, dtype=np.int)
+        # if True in bool_map.flat:
+        #     del matches[i]
+        #     i -= 1
+        #     continue
+        # i += 1
     i = 0
     while i < len(matches):
         m = matches[i]
@@ -76,9 +80,8 @@ def refine_match_mask_filter(matches, kp1, kp2, mask_dir1, mask_dir2):
                 or end2[1] - margin <= 0 or end2[1] + margin >= mask2.shape[1]:
             del matches[i]
             continue
-        bool_map = mask2[end2[0]-margin:end2[0]+margin, end2[1]-margin:end2[1]+margin] == \
-            np.array(config.mask_car_color, dtype=np.int)
-        if True in bool_map.flat:
+        if np.array(config.mask_car_color, dtype=np.int) in \
+            mask2[end2[0]-margin:end2[0]+margin, end2[1]-margin:end2[1]+margin]:
             del matches[i]
             continue
         i += 1

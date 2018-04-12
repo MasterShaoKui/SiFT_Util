@@ -252,10 +252,10 @@ for i in range(len(files)):
     cv2.circle(img, (int(exx * img.shape[1]), int(eyy * img.shape[0])), 5, (0, 0, 255), 3)
     warpd = cv2.warpPerspective(img, nM, warp_size)
     Ms.append(nM)
-    cv2.imwrite("{}/{}.jpg".format(exyw_dir, fname), warpd)
+    # cv2.imwrite("{}/{}.jpg".format(exyw_dir, fname), warpd)
 
 
 # save perspective matrices
 for i, matrix in enumerate(Ms):
-    np.savetxt(fname="./t173_pm/" + str(i) + ".txt", X=matrix)
+    np.savetxt(fname="./t173_pm/" + str(files[i]) + ".txt", X=matrix)
 
