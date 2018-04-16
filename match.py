@@ -4,12 +4,6 @@ import config
 from config import mask_margin as margin
 
 
-def match_standard(des1, des2):
-    matches = list()
-    des1 = des2 * 2 + des1
-    return matches
-
-
 def refine_match_moving(matches, kp1, kp2, center):
     i = 0
     while i < len(matches):
@@ -40,8 +34,14 @@ def refine_match_without_car(matches, kp1, kp2):
     while i < len(matches):
         m = matches[i]
         end1 = np.array(kp1[m.queryIdx].pt)
+        if end1[1] > config.match_front_car:
+            del matches[i]
+            i -= 1
+        i += 1
+    while i < len(matches):
+        m = matches[i]
         end2 = np.array(kp2[m.trainIdx].pt)
-        if end1[1] > 800:
+        if end2[1] > config.match_front_car:
             del matches[i]
             i -= 1
         i += 1
@@ -60,17 +60,10 @@ def refine_match_mask_filter(matches, kp1, kp2, mask_dir1, mask_dir2):
             del matches[i]
             continue
         if np.array(config.mask_car_color, dtype=np.int) in \
-            mask1[end1[0]-margin:end1[0]+margin, end1[1]-margin:end1[1]+margin]:
+                mask1[end1[0]-margin:end1[0]+margin, end1[1]-margin:end1[1]+margin]:
             del matches[i]
             continue
         i += 1
-        # bool_map = mask1[end1[0]-margin:end1[0]+margin, end1[1]-margin:end1[1]+margin] == \
-        #     np.array(config.mask_car_color, dtype=np.int)
-        # if True in bool_map.flat:
-        #     del matches[i]
-        #     i -= 1
-        #     continue
-        # i += 1
     i = 0
     while i < len(matches):
         m = matches[i]
@@ -98,3 +91,19 @@ def refine_match_distance(matches, kp1, kp2):
             i -= 1
         i += 1
 
+
+def refine_match_radius(matches, kp1, kp2):
+    i = 0
+    while i < len(matches):
+        m = matches[i]
+        end1 = np.array(kp1[m.queryIdx].pt)
+        end2 = np.array(kp2[m.trainIdx].pt)
+        for j in range(i):
+            m_cp = matches[j]
+            end1_cp = np.array(kp1[m_cp.queryIdx].pt)
+            end2_cp = np.array(kp2[m_cp.trainIdx].pt)
+            if np.linalg.norm(end1 - end1_cp) < config.max_grid or np.linalg.norm(end2 - end2_cp) < config.max_grid:
+                del matches[i]
+                i -= 1
+                break
+        i += 1
