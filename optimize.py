@@ -28,7 +28,4 @@ def calculate_perspective_matrix(x1, x2):
     # calculate initial matrix
     init_matrix = cv.getPerspectiveTransform(np.float32(x1[0:4, 0:2]), np.float32(x2[0:4, 0:2]))
     result = minimize(fun=model, x0=init_matrix.flat[0:8], args=(x1.T, x2.T), method='Nelder-Mead', tol=0.0001)
-    # print(minimize(fun=model, x0=np.random.randint(low=-10, high=10, size=8),
-    #                args=(x1.T, x2.T), method='Nelder-Mead',
-    #                tol=0.00001).x)
     return p_m_form(result.x)

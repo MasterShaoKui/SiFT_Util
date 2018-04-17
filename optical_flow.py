@@ -6,7 +6,7 @@ from mask import mask_roi
 
 # note that valid mask color should be (180 120 120).
 # (255, 5, 154) is also available, but not recommend.
-def dense_optical_flow(img1, img2, mask1, mask2):
+def dense_dual_optical_flow(img1, img2, mask1, mask2):
     frame1 = cv.cvtColor(img1, cv.COLOR_BGR2GRAY)
     frame2 = cv.cvtColor(img2, cv.COLOR_BGR2GRAY)
     flow = cv.calcOpticalFlowFarneback(frame1, frame2, None, 0.5, 3, 15, 3, 5, 1.2, 0)
@@ -23,7 +23,6 @@ def dense_optical_flow(img1, img2, mask1, mask2):
     # check if p2 is in corresponding place
     for i, p in enumerate(p1):
         # if point is in correct region, add that point
-        print(mask1[int(p[1]), int(p[0])])
         if np.array_equal(mask1[int(p[1]), int(p[0])], np.array(config.mask_building_color, dtype=np.int)) or \
            np.array_equal(mask1[int(p[1]), int(p[0])], np.array((255, 5, 154))):
             if np.array_equal(mask2[int(p2[i][1]),
@@ -32,24 +31,23 @@ def dense_optical_flow(img1, img2, mask1, mask2):
                 p1_nxt = np.vstack((p1_nxt, p))
                 p2_nxt = np.vstack((p2_nxt, p2[i]))
     # check if p2 is in corresponding place
-    return np.array(p1_nxt, dtype=np.int), np.array(p2_nxt, dtype=np.int), flow
+    return p1_nxt, p2_nxt, flow
 
 
-color = np.random.randint(0, 255, (100, 3))
-img1 = cv.imread("./data/65.jpg", cv.IMREAD_UNCHANGED)
-img2 = cv.imread("./data/66.jpg", cv.IMREAD_UNCHANGED)
-mask1 = cv.imread("./mask/65.jpg", cv.IMREAD_UNCHANGED)
-mask2 = cv.imread("./mask/66.jpg", cv.IMREAD_UNCHANGED)
-p1_nxt, p2_nxt, flow = dense_optical_flow(img1, img2, mask1, mask2)
-for i, point in enumerate(p1_nxt):
-    img1 = cv.circle(img1, (int(point[0]), int(point[1])), 5, color[i].tolist(), -1)
-mask = np.zeros_like(img1)
-for i, (new, old) in enumerate(zip(p2_nxt, p1_nxt)):
-    a, b = new.ravel()
-    c, d = old.ravel()
-    mask = cv.line(mask, (a, b), (c, d), color[i].tolist(), 2)
-    img2 = cv.circle(img2, (a, b), 5, color[i].tolist(), -1)
-img2 = cv.add(img2, mask)
-cv.imwrite("1.jpg", img1)
-cv.imwrite("2.jpg", img2)
-print(p1_nxt.shape)
+# color = np.random.randint(0, 255, (100, 3))
+# img1 = cv.imread("./data/65.jpg", cv.IMREAD_UNCHANGED)
+# img2 = cv.imread("./data/66.jpg", cv.IMREAD_UNCHANGED)
+# mask1 = cv.imread("./mask/65.jpg", cv.IMREAD_UNCHANGED)
+# mask2 = cv.imread("./mask/66.jpg", cv.IMREAD_UNCHANGED)
+# p1_nxt, p2_nxt, flow = dense_dual_optical_flow(img1, img2, mask1, mask2)
+# for i, point in enumerate(p1_nxt):
+#     img1 = cv.circle(img1, (int(point[0]), int(point[1])), 5, color[i].tolist(), -1)
+# mask = np.zeros_like(img1)
+# for i, (new, old) in enumerate(zip(p2_nxt, p1_nxt)):
+#     a, b = new.ravel()
+#     c, d = old.ravel()
+#     mask = cv.line(mask, (a, b), (c, d), color[i].tolist(), 2)
+#     img2 = cv.circle(img2, (a, b), 5, color[i].tolist(), -1)
+# img2 = cv.add(img2, mask)
+# cv.imwrite("1.jpg", img1)
+# cv.imwrite("2.jpg", img2)

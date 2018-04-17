@@ -1,5 +1,4 @@
 import numpy as np
-import cv2 as cv
 import config
 from config import mask_margin as margin
 
@@ -47,9 +46,7 @@ def refine_match_without_car(matches, kp1, kp2):
         i += 1
 
 
-def refine_match_mask_filter(matches, kp1, kp2, mask_dir1, mask_dir2):
-    mask1 = cv.imread(mask_dir1, cv.IMREAD_UNCHANGED)
-    mask2 = cv.imread(mask_dir2, cv.IMREAD_UNCHANGED)
+def refine_match_mask_filter(matches, kp1, kp2, mask1, mask2):
     i = 0
     while i < len(matches):
         m = matches[i]
@@ -106,4 +103,23 @@ def refine_match_radius(matches, kp1, kp2):
                 del matches[i]
                 i -= 1
                 break
+        i += 1
+
+
+def refine_match_op_trend(matches, kp1, kp2, flow):
+    i = 0
+    while i < len(matches):
+        m = matches[i]
+        end1 = np.array(kp1[m.queryIdx].pt)
+        end2 = np.array(kp2[m.trainIdx].pt)
+        end = end2 - end1
+        # p2 = p1 + flow[int(p[1]), int(p[0])]
+        # p2 = p1 + flow[int(p[1]), int(p[0])]
+        vec = flow[int(end1[0]), int(end1[1])]
+        # to unit
+        end = end / np.linalg.norm(end)
+        vec = vec / np.linalg.norm(vec)
+        if np.dot(end, vec) < config.mask_op_trend_thresh:
+            del matches[i]
+            i -= 1
         i += 1

@@ -4,7 +4,7 @@ import config
 
 
 def mask_roi(mask):
-    shrink_shape = (int(mask.shape[1]/25), int(mask.shape[0]/25))
+    shrink_shape = (int(mask.shape[1]/config.mask_scale_factor), int(mask.shape[0]/config.mask_scale_factor))
     mask_min = cv.resize(mask, dsize=shrink_shape, interpolation=cv.INTER_NEAREST)
     mask_final = np.full(shape=(shrink_shape[1], shrink_shape[0]), fill_value=0, dtype=np.uint8)
     for i in range(len(mask_min)):

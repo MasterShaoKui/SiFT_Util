@@ -2,6 +2,7 @@ import cv2 as cv
 import numpy as np
 import config
 mask = cv.imread("./mask/65.jpg", cv.IMREAD_UNCHANGED)
+print(mask.shape)
 shrink_shape = (int(mask.shape[1]/25), int(mask.shape[0]/25))
 mask_min = cv.resize(mask, dsize=shrink_shape, interpolation=cv.INTER_NEAREST)
 mask_final = np.full(shape=(shrink_shape[1], shrink_shape[0]), fill_value=255, dtype=np.intc)
