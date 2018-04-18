@@ -14,8 +14,9 @@ from optical_flow import dense_dual_optical_flow
 from mask import mask_roi
 
 
-def save_sift_result(pic_name_pre, pic_name_nxt, keys_pre, keys_nxt, matches,
-                     output_dir=os.path.join(root_dir, "sift_matching")):
+def save_sift_result(pic_name_pre, pic_name_nxt, keys_pre, keys_nxt, matches, output_dir=None):
+    if output_dir is None:
+        output_dir = os.path.join(root_dir, config.o_f_name + "/sift_matching")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     img_pre = cv.imread(os.path.join(root_dir, "pics/" + pic_name_pre), cv.IMREAD_UNCHANGED)
@@ -41,8 +42,9 @@ def save_sift_result(pic_name_pre, pic_name_nxt, keys_pre, keys_nxt, matches,
     cv.imwrite(os.path.join(output_dir, concat_img_name), final_img)
 
 
-def choose_bev_point(pic_name_pre, pic_name_nxt, img_pre, img_nxt, matrix,
-                     output_dir=os.path.join(root_dir, "chosenps")):
+def choose_bev_point(pic_name_pre, pic_name_nxt, img_pre, img_nxt, matrix, output_dir=None):
+    if output_dir is None:
+        output_dir = os.path.join(root_dir, config.o_f_name + "/chosenps")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     # 开始计算用于帧间匹配的点
@@ -85,7 +87,6 @@ def choose_bev_point(pic_name_pre, pic_name_nxt, img_pre, img_nxt, matrix,
 def calculate_distance(pre, nxt, mode='v'):
     # pre and nxt are bev points. pre is generated.
     assert pre.shape == nxt.shape, "# bev point is not equal! "
-    print(nxt)
 
     def model(x, *args):
         x1 = args[0]  # pre
@@ -98,8 +99,9 @@ def calculate_distance(pre, nxt, mode='v'):
 
 
 def save_optical_flow_result(pic_name_pre, pic_name_nxt, img_pre, img_nxt,
-                             ofp_pre, ofp_nxt, mask_pre=None, mask_nxt=None,
-                             output_dir=os.path.join(root_dir, "outputs/optical_flow")):
+                             ofp_pre, ofp_nxt, mask_pre=None, mask_nxt=None, output_dir=None):
+    if output_dir is None:
+        output_dir = os.path.join(root_dir, config.o_f_name + "/optical_flow")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     color = np.random.randint(0, 255, (100, 3))
@@ -111,8 +113,8 @@ def save_optical_flow_result(pic_name_pre, pic_name_nxt, img_pre, img_nxt,
     for i, (new, old) in enumerate(zip(ofp_nxt, ofp_pre)):
         a, b = new.ravel()
         c, d = old.ravel()
-        mask = cv.line(mask, (a, b), (c, d), color[i].tolist(), 2)
-        img_nxt = cv.circle(img_nxt, (a, b), 5, color[i].tolist(), -1)
+        mask = cv.line(mask, (int(a), int(b)), (int(c), int(d)), color[i].tolist(), 2)
+        img_nxt = cv.circle(img_nxt, (int(a), int(b)), 5, color[i].tolist(), -1)
     img_nxt = cv.add(img_nxt, mask)
     final_path = os.path.join(output_dir, pic_name_pre.split(".")[0] + "-" + pic_name_nxt.split(".")[0] + ".jpg")
     final_img = np.vstack((img_pre, img_nxt))
@@ -145,6 +147,8 @@ def frame_match(pic_name_pre, pic_name_nxt):
     refine_match_op_trend(matches, keys_pre, keys_nxt, flow)
     refine_match_radius(matches, keys_pre, keys_nxt)
     matches = sorted(matches, key=lambda x: x.distance)
+    if config.is_output_sift_matching:
+        save_sift_result(pic_name_pre, pic_name_nxt, keys_pre, keys_nxt, matches)
     x1 = np.zeros(shape=(0, 2))
     x2 = np.zeros(shape=(0, 2))
     for m in matches:
@@ -152,23 +156,35 @@ def frame_match(pic_name_pre, pic_name_nxt):
         pt2 = np.array(keys_nxt[m.trainIdx].pt)
         x1 = np.vstack((x1, pt1.reshape(1, 2)))
         x2 = np.vstack((x2, pt2.reshape(1, 2)))
-    # x1 = np.vstack((x1, ofp_pre))
-    # x2 = np.vstack((x2, ofp_nxt))
+    matrix = calculate_perspective_matrix(x1, x2)
+    bev_p_pre, bev_p_nxt = choose_bev_point(pic_name_pre, pic_name_nxt, img_pre, img_nxt, matrix)
+    dis_list = list()
+    dis_list.append(calculate_distance(bev_p_pre, bev_p_nxt))
+    # an alternative way to generate distance using op points.
     x1 = np.vstack((ofp_pre, x1))
     x2 = np.vstack((ofp_nxt, x2))
-    matrix = calculate_perspective_matrix(x1, x2)
-    if config.is_output_sift_matching:
-        save_sift_result(pic_name_pre, pic_name_nxt, keys_pre, keys_nxt, matches)
-    bev_p_pre, bev_p_nxt = choose_bev_point(pic_name_pre, pic_name_nxt, img_pre, img_nxt, matrix)
-    dis = calculate_distance(bev_p_pre, bev_p_nxt)
+    matrix_with_op = calculate_perspective_matrix(x1, x2)
+    bev_p_pre, bev_p_nxt = choose_bev_point(pic_name_pre, pic_name_nxt, img_pre, img_nxt, matrix_with_op,
+                                            output_dir=os.path.join(root_dir, config.o_f_name + "/chosenps_op"))
+    dis_list.append(calculate_distance(bev_p_pre, bev_p_nxt))
+    dis_index = 0
+    while dis_index < len(dis_list):
+        if dis_list[dis_index] <= 0:
+            del dis_list[dis_index]
+            dis_index -= 1
+        dis_index += 1
+    if len(dis_list) == 0:
+        print("error! no valid distance! ")
+        return None
     # pixel is discrete, so the distance should be an integer
-    dis = int(dis)
+    dis = int(min(dis_list))
     if config.is_output_frame_match:
         save_frame_match(pic_name_pre, pic_name_nxt, dis)
 
 
-def save_frame_match(pic_name_pre, pic_name_nxt, dis,
-                     output_dir=os.path.join(root_dir, "outputs/frame_match/")):
+def save_frame_match(pic_name_pre, pic_name_nxt, dis, output_dir=None):
+    if output_dir is None:
+        output_dir = os.path.join(root_dir, config.o_f_name + "/frame_match")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     bev_img_pre = cv.imread(os.path.join(root_dir, "bev_pics/" + pic_name_pre), cv.IMREAD_UNCHANGED)
@@ -190,6 +206,15 @@ config.is_output_chosen_points = False
 config.is_output_op = False
 config.is_output_frame_match = True
 files = os.listdir(root_dir + "pics/")
-for i in range(20):
-    frame_match(files[i], files[i+1])
+config.o_f_name = "4-19"
+for i in range(len(files)):
+    frame_match(files[i], files[i + 1])
+# for i in (15, 20, 25, 30, 35, 40, 45, 50):
+#     config.max_grid = i
+#     config.o_f_name = "radius_" + str(i)
+#     for i in range(20):
+#         frame_match(files[i], files[i + 1])
+#     print("finish: ", i)
+
+
 

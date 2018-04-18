@@ -19,4 +19,4 @@ mask_op_trend_thresh = 0.5
 max_norm_dis = 100
 max_grid = 10
 root_dir = "E:/lane_modeling/the_173/"
-
+o_f_name = "outputs"  # output folder name
