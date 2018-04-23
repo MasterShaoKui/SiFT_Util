@@ -17,6 +17,14 @@ def dense_dual_optical_flow(img1, img2, mask1, mask2):
     p2 = np.zeros_like(p1)
     for i, p in enumerate(p1):
         p2[i] = p + flow[int(p[1]), int(p[0])]
+        if p2[i][0] >= img1.shape[1]:
+            p2[i][0] = img1.shape[1]-1
+        if p2[i][0] < 0:
+            p2[i][0] = 0
+        if p2[i][1] < 0:
+            p2[i][1] = 0
+        if p2[i][1] >= img1.shape[0]:
+            p2[i][1] = img1.shape[0]-1
 
     p1_nxt = np.zeros(shape=(0, 2))
     p2_nxt = np.zeros(shape=(0, 2))

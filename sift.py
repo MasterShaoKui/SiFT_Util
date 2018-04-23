@@ -2,6 +2,7 @@ import cv2 as cv
 import numpy as np
 from scipy.optimize import minimize
 import os
+import time
 from draw_match import draw_matches_vertical_rgb
 import config
 from config import root_dir
@@ -11,7 +12,7 @@ from match import refine_match_moving, refine_match_radius, refine_match_op_tren
     refine_match_without_car, refine_match_mask_filter, refine_match_distance
 import bev
 from optical_flow import dense_dual_optical_flow
-from mask import mask_roi
+from mask import mask_roi, mask_no_car
 
 
 def save_sift_result(pic_name_pre, pic_name_nxt, keys_pre, keys_nxt, matches, output_dir=None):
@@ -136,8 +137,8 @@ def frame_match(pic_name_pre, pic_name_nxt):
         save_optical_flow_result(pic_name_pre, pic_name_nxt, img_pre, img_nxt, ofp_pre, ofp_nxt, mask_pre, mask_nxt)
     center_avg = (int((img_nxt.shape[1] + img_pre.shape[1]) / 4), int((img_nxt.shape[0] + img_pre.shape[0]) / 4))
     sift = cv.xfeatures2d.SIFT_create()
-    keys_pre, des_pre = sift.detectAndCompute(img_pre, None)
-    keys_nxt, des_nxt = sift.detectAndCompute(img_nxt, None)
+    keys_pre, des_pre = sift.detectAndCompute(img_pre, mask=mask_no_car(mask_pre))
+    keys_nxt, des_nxt = sift.detectAndCompute(img_nxt, mask=mask_no_car(mask_nxt))
     bf = cv.BFMatcher_create(crossCheck=True)
     matches = bf.match(des_pre, des_nxt)
     refine_match_moving(matches, keys_pre, keys_nxt, center_avg)
@@ -156,17 +157,19 @@ def frame_match(pic_name_pre, pic_name_nxt):
         pt2 = np.array(keys_nxt[m.trainIdx].pt)
         x1 = np.vstack((x1, pt1.reshape(1, 2)))
         x2 = np.vstack((x2, pt2.reshape(1, 2)))
-    matrix = calculate_perspective_matrix(x1, x2)
-    bev_p_pre, bev_p_nxt = choose_bev_point(pic_name_pre, pic_name_nxt, img_pre, img_nxt, matrix)
     dis_list = list()
-    dis_list.append(calculate_distance(bev_p_pre, bev_p_nxt))
+    if x1.shape[0] >= 4 and x2.shape[0] >= 4:
+        matrix = calculate_perspective_matrix(x1, x2)
+        bev_p_pre, bev_p_nxt = choose_bev_point(pic_name_pre, pic_name_nxt, img_pre, img_nxt, matrix)
+        dis_list.append(calculate_distance(bev_p_pre, bev_p_nxt))
     # an alternative way to generate distance using op points.
     x1 = np.vstack((ofp_pre, x1))
     x2 = np.vstack((ofp_nxt, x2))
-    matrix_with_op = calculate_perspective_matrix(x1, x2)
-    bev_p_pre, bev_p_nxt = choose_bev_point(pic_name_pre, pic_name_nxt, img_pre, img_nxt, matrix_with_op,
-                                            output_dir=os.path.join(root_dir, config.o_f_name + "/chosenps_op"))
-    dis_list.append(calculate_distance(bev_p_pre, bev_p_nxt))
+    if x1.shape[0] >= 4 and x2.shape[0] >= 4:
+        matrix_with_op = calculate_perspective_matrix(x1, x2)
+        bev_p_pre, bev_p_nxt = choose_bev_point(pic_name_pre, pic_name_nxt, img_pre, img_nxt, matrix_with_op,
+                                                output_dir=os.path.join(root_dir, config.o_f_name + "/chosenps_op"))
+        dis_list.append(calculate_distance(bev_p_pre, bev_p_nxt))
     dis_index = 0
     while dis_index < len(dis_list):
         if dis_list[dis_index] <= 0:
@@ -207,8 +210,14 @@ config.is_output_op = False
 config.is_output_frame_match = True
 files = os.listdir(root_dir + "pics/")
 config.o_f_name = "4-19"
-for i in range(len(files)):
+i = 0
+while i < len(files)-1:
+    time_start = time.time()
     frame_match(files[i], files[i + 1])
+    time_end = time.time()
+    print("总运行时间： " + str(time_end - time_start) + "s")
+    i += 1
+
 # for i in (15, 20, 25, 30, 35, 40, 45, 50):
 #     config.max_grid = i
 #     config.o_f_name = "radius_" + str(i)
