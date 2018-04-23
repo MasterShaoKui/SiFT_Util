@@ -61,8 +61,8 @@ def choose_bev_point(pic_name_pre, pic_name_nxt, img_pre, img_nxt, matrix, outpu
     dst = bev.norm_cv_transform(dst)
     for index, p in enumerate(dst):
         cv.circle(img_pre, (int(p[0]), int(p[1])), 5, (0, 0, 255), 6)
-    dst = cv.transform(np.float32([dst]), matrix)
-    dst = bev.norm_cv_transform(dst)
+    dst = np.dot(matrix, np.hstack((dst, np.ones(shape=(dst.shape[0], 1), dtype=np.float32))).T)
+    dst = dst.T
     for index, p in enumerate(dst):
         cv.circle(img_nxt, (int(p[0]), int(p[1])), 5, (0, 0, 255), 6)
     dst = cv.transform(np.float32([dst]),
@@ -105,7 +105,7 @@ def save_optical_flow_result(pic_name_pre, pic_name_nxt, img_pre, img_nxt,
         output_dir = os.path.join(root_dir, config.o_f_name + "/optical_flow")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    color = np.random.randint(0, 255, (100, 3))
+    color = np.random.randint(0, 255, (ofp_pre.shape[0], 3))
     img_pre = np.copy(img_pre)
     img_nxt = np.copy(img_nxt)
     for i, point in enumerate(ofp_pre):
@@ -204,13 +204,13 @@ def save_frame_match(pic_name_pre, pic_name_nxt, dis, output_dir=None):
     cv.imwrite(final_dir, final_img)
 
 
-config.is_output_sift_matching = False
-config.is_output_chosen_points = False
-config.is_output_op = False
+config.is_output_sift_matching = True
+config.is_output_chosen_points = True
+config.is_output_op = True
 config.is_output_frame_match = True
 files = os.listdir(root_dir + "pics/")
-config.o_f_name = "4-19"
-i = 0
+config.o_f_name = "try_affine"
+i = 89
 while i < len(files)-1:
     time_start = time.time()
     frame_match(files[i], files[i + 1])
