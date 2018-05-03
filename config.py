@@ -20,3 +20,8 @@ max_norm_dis = 100
 max_grid = 10
 root_dir = "E:/lane_modeling/the_173/"
 o_f_name = "outputs"  # output folder name
+# optimize
+u0_cache = 1920
+v0_cache = 1088
+# choose bev points
+down_points_num = 6

@@ -1,2 +1,4 @@
 import cv2 as cv
-print(cv.getBuildInformation())
+img = cv.imread("./data/65.jpg", cv.IMREAD_UNCHANGED)
+print(img.shape)
+

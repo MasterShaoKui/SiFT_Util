@@ -7,7 +7,7 @@ from draw_match import draw_matches_vertical_rgb
 import config
 from config import root_dir
 from config import text_color, text_pos, text_size
-from optimize import calculate_perspective_matrix
+from optimize import calculate_perspective_matrix, calculate_affine_matrix
 from match import refine_match_moving, refine_match_radius, refine_match_op_trend, \
     refine_match_without_car, refine_match_mask_filter, refine_match_distance
 import bev
@@ -158,10 +158,12 @@ def frame_match(pic_name_pre, pic_name_nxt):
         x1 = np.vstack((x1, pt1.reshape(1, 2)))
         x2 = np.vstack((x2, pt2.reshape(1, 2)))
     dis_list = list()
+    matrix_list = list()
     if x1.shape[0] >= 4 and x2.shape[0] >= 4:
         matrix = calculate_perspective_matrix(x1, x2)
         bev_p_pre, bev_p_nxt = choose_bev_point(pic_name_pre, pic_name_nxt, img_pre, img_nxt, matrix)
         dis_list.append(calculate_distance(bev_p_pre, bev_p_nxt))
+        matrix_list.append(matrix)
     # an alternative way to generate distance using op points.
     x1 = np.vstack((ofp_pre, x1))
     x2 = np.vstack((ofp_nxt, x2))
@@ -170,6 +172,7 @@ def frame_match(pic_name_pre, pic_name_nxt):
         bev_p_pre, bev_p_nxt = choose_bev_point(pic_name_pre, pic_name_nxt, img_pre, img_nxt, matrix_with_op,
                                                 output_dir=os.path.join(root_dir, config.o_f_name + "/chosenps_op"))
         dis_list.append(calculate_distance(bev_p_pre, bev_p_nxt))
+        matrix_list.append(matrix_with_op)
     dis_index = 0
     while dis_index < len(dis_list):
         if dis_list[dis_index] <= 0:
@@ -181,8 +184,10 @@ def frame_match(pic_name_pre, pic_name_nxt):
         return None
     # pixel is discrete, so the distance should be an integer
     dis = int(min(dis_list))
+    final_matrix = matrix_list[dis_list.index(min(dis_list))]
     if config.is_output_frame_match:
         save_frame_match(pic_name_pre, pic_name_nxt, dis)
+    return final_matrix
 
 
 def save_frame_match(pic_name_pre, pic_name_nxt, dis, output_dir=None):
@@ -192,7 +197,8 @@ def save_frame_match(pic_name_pre, pic_name_nxt, dis, output_dir=None):
         os.makedirs(output_dir)
     bev_img_pre = cv.imread(os.path.join(root_dir, "bev_pics/" + pic_name_pre), cv.IMREAD_UNCHANGED)
     bev_img_nxt = cv.imread(os.path.join(root_dir, "bev_pics/" + pic_name_nxt), cv.IMREAD_UNCHANGED)
-    final_dir = os.path.join(output_dir, pic_name_pre.split(".")[0] + "-" + pic_name_nxt.split(".")[0] + ".jpg")
+    final_dir = os.path.join(output_dir, pic_name_pre.split(".")[0].split("_")[-1]
+                             + "-" + pic_name_nxt.split(".")[0].split("_")[-1] + ".jpg")
     if dis > bev_img_pre.shape[0]:
         final_img = np.vstack((bev_img_nxt, bev_img_pre))
     else:
@@ -204,26 +210,35 @@ def save_frame_match(pic_name_pre, pic_name_nxt, dis, output_dir=None):
     cv.imwrite(final_dir, final_img)
 
 
-config.is_output_sift_matching = True
+def save_core_matrix(matrix, index, output_dir=None):
+    if output_dir is None:
+        output_dir = os.path.join(root_dir, config.o_f_name + "/core_matrices")
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    np.savetxt(output_dir + "/" + str(index) + ".txt", matrix, fmt="%.6f")
+
+
+config.is_output_sift_matching = False
 config.is_output_chosen_points = True
-config.is_output_op = True
+config.is_output_op = False
 config.is_output_frame_match = True
 files = os.listdir(root_dir + "pics/")
-config.o_f_name = "try_affine"
-i = 89
+config.o_f_name = "5-3"
+if not os.path.exists(os.path.join(root_dir, config.o_f_name)):
+    os.makedirs(os.path.join(root_dir, config.o_f_name))
+i = 0
 while i < len(files)-1:
+    all_matrices = open(os.path.join(root_dir, config.o_f_name) + "/matrices.txt", mode='a')
     time_start = time.time()
-    frame_match(files[i], files[i + 1])
+    m = frame_match(files[i], files[i + 1])
+    print(m)
+    if m is None:
+        m = np.zeros(shape=(2, 3))
+    save_core_matrix(m, i)
+    print(np.array2string(m, formatter={'float_kind': lambda x: "%.3f" % x}))
+    all_matrices.write(np.array2string(m, formatter={'float_kind': lambda x: "%.3f" % x}))
+    all_matrices.write("\r\n")
     time_end = time.time()
     print("总运行时间： " + str(time_end - time_start) + "s")
     i += 1
-
-# for i in (15, 20, 25, 30, 35, 40, 45, 50):
-#     config.max_grid = i
-#     config.o_f_name = "radius_" + str(i)
-#     for i in range(20):
-#         frame_match(files[i], files[i + 1])
-#     print("finish: ", i)
-
-
-
+    all_matrices.close()
