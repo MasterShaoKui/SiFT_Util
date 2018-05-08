@@ -25,3 +25,4 @@ u0_cache = 1920
 v0_cache = 1088
 # choose bev points
 down_points_num = 6
+minimal_bev_dis = 40

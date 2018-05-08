@@ -7,7 +7,7 @@ from draw_match import draw_matches_vertical_rgb
 import config
 from config import root_dir
 from config import text_color, text_pos, text_size
-from optimize import calculate_perspective_matrix, calculate_affine_matrix
+from optimize import calculate_perspective_matrix, calculate_linear_t_matrix
 from match import refine_match_moving, refine_match_radius, refine_match_op_trend, \
     refine_match_without_car, refine_match_mask_filter, refine_match_distance
 import bev
@@ -62,6 +62,9 @@ def choose_bev_point(pic_name_pre, pic_name_nxt, img_pre, img_nxt, matrix, outpu
     for index, p in enumerate(dst):
         cv.circle(img_pre, (int(p[0]), int(p[1])), 5, (0, 0, 255), 6)
     dst = np.dot(matrix, np.hstack((dst, np.ones(shape=(dst.shape[0], 1), dtype=np.float32))).T)
+    if dst.shape[0] == 3:
+        dst = dst / dst[2, :]
+        dst = dst[0:2, :]
     dst = dst.T
     for index, p in enumerate(dst):
         cv.circle(img_nxt, (int(p[0]), int(p[1])), 5, (0, 0, 255), 6)
@@ -177,14 +180,19 @@ def frame_match(pic_name_pre, pic_name_nxt):
     while dis_index < len(dis_list):
         if dis_list[dis_index] <= 0:
             del dis_list[dis_index]
+            del matrix_list[dis_index]
             dis_index -= 1
         dis_index += 1
     if len(dis_list) == 0:
         print("error! no valid distance! ")
         return None
     # pixel is discrete, so the distance should be an integer
-    dis = int(min(dis_list))
-    final_matrix = matrix_list[dis_list.index(min(dis_list))]
+    assert len(dis_list) == len(matrix_list), "len(dis_list) == len(matrix_list)"
+    dis = int(np.average(np.array(dis_list, dtype=np.float32)))
+    final_matrix = np.zeros_like(matrix_list[0], dtype=np.float32)
+    for m in matrix_list:
+        final_matrix += m
+    final_matrix = final_matrix / len(matrix_list)
     if config.is_output_frame_match:
         save_frame_match(pic_name_pre, pic_name_nxt, dis)
     return final_matrix
@@ -218,27 +226,28 @@ def save_core_matrix(matrix, index, output_dir=None):
     np.savetxt(output_dir + "/" + str(index) + ".txt", matrix, fmt="%.6f")
 
 
-config.is_output_sift_matching = False
-config.is_output_chosen_points = True
-config.is_output_op = False
-config.is_output_frame_match = True
-files = os.listdir(root_dir + "pics/")
-config.o_f_name = "5-3"
-if not os.path.exists(os.path.join(root_dir, config.o_f_name)):
-    os.makedirs(os.path.join(root_dir, config.o_f_name))
-i = 0
-while i < len(files)-1:
-    all_matrices = open(os.path.join(root_dir, config.o_f_name) + "/matrices.txt", mode='a')
-    time_start = time.time()
-    m = frame_match(files[i], files[i + 1])
-    print(m)
-    if m is None:
-        m = np.zeros(shape=(2, 3))
-    save_core_matrix(m, i)
-    print(np.array2string(m, formatter={'float_kind': lambda x: "%.3f" % x}))
-    all_matrices.write(np.array2string(m, formatter={'float_kind': lambda x: "%.3f" % x}))
-    all_matrices.write("\r\n")
-    time_end = time.time()
-    print("总运行时间： " + str(time_end - time_start) + "s")
-    i += 1
-    all_matrices.close()
+if __name__ == '__main__':
+    config.is_output_sift_matching = False
+    config.is_output_chosen_points = True
+    config.is_output_op = False
+    config.is_output_frame_match = True
+    files = os.listdir(root_dir + "pics/")
+    config.o_f_name = "5-4-final"
+    if not os.path.exists(os.path.join(root_dir, config.o_f_name)):
+        os.makedirs(os.path.join(root_dir, config.o_f_name))
+    i = 0
+    while i < len(files)-1:
+        all_matrices = open(os.path.join(root_dir, config.o_f_name) + "/matrices.txt", mode='a')
+        time_start = time.time()
+        m = frame_match(files[i], files[i + 1])
+        print(m)
+        if m is None:
+            m = np.zeros(shape=(2, 3))
+        save_core_matrix(m, i)
+        print(np.array2string(m, formatter={'float_kind': lambda x: "%.3f" % x}))
+        all_matrices.write(np.array2string(m, formatter={'float_kind': lambda x: "%.3f" % x}))
+        all_matrices.write("\r\n")
+        time_end = time.time()
+        print("总运行时间： " + str(time_end - time_start) + "s")
+        i += 1
+        all_matrices.close()

@@ -34,22 +34,22 @@ def para_to_matrix(fx, fy, theta, xc, yc, u0=None, v0=None):
     return f[0:3, 0:2].T
 
 
-def model(x, *args):
-    matrix = x.reshape(2, 3)
-    x1 = args[0]
-    x2 = args[1]
-    x2_predi = np.dot(matrix, x1)
-    regularize = np.square(matrix[0, 2]) + np.square(matrix[1, 2])
-    regularize = regularize / 10
-    return np.sum(np.square(x2 - x2_predi)) / x2.shape[0] + regularize
-
-
 def model_five_para(x, *args):
     matrix = np.hstack((np.array(x[3]), x)).reshape(2, 3)
     x1 = args[0]
     x2 = args[1]
     x2_predi = np.dot(matrix, x1)
     return np.sum(np.square(x2 - x2_predi)) / x2.shape[0]
+
+
+def model(x, *args):
+    matrix = x.reshape(2, 3)
+    x1 = args[0]
+    x2 = args[1]
+    x2_predi = np.dot(matrix, x1)
+    regularize = (np.square(matrix[0, 2]) + np.square(matrix[1, 2]))/50
+    regularize += np.square(matrix[0, 0] - matrix[1, 1]) * 1000
+    return np.sum(np.square(x2 - x2_predi)) / x2.shape[0] + regularize
 
 
 def calculate_perspective_matrix(x1, x2):
@@ -90,3 +90,32 @@ def calculate_affine_matrix(x1, x2):
     print("result parameters: \r\n", result.x)
     print("result matrix: \r\n", para_to_matrix(x[0], x[1], x[2], x[3], x[4], config.u0_cache, config.v0_cache))
     return para_to_matrix(x[0], x[1], x[2], x[3], x[4], config.u0_cache, config.v0_cache)
+
+
+def model_linear_t(x, *args):
+    matrix = np.array([[x[0], 0., x[3]],
+                       [0., x[0], x[4]],
+                       [x[1], x[2], 1.0]], dtype=np.float32)
+    x1 = args[0]
+    x2 = args[1]
+    x2_predi = np.dot(matrix, x1)
+    x2_predi = x2_predi / x2_predi[2, :]
+    regularize = np.sum(np.square(x)) + np.square(x[0] - 0.9) * 10000
+    return np.sum(np.square(x2 - x2_predi)) / x2.shape[0] + regularize
+
+
+def calculate_linear_t_matrix(x1, x2):
+    assert x1.shape[0] == x2.shape[0], "Shapes are not equal! "
+    if x1.shape[1] == 2:
+        x1 = np.hstack((x1, np.ones(shape=(x1.shape[0], 1), dtype=np.float32)))
+    if x2.shape[1] == 2:
+        x2 = np.hstack((x2, np.ones(shape=(x2.shape[0], 1), dtype=np.float32)))
+    # calculate initial matrix
+    # init_matrix = cv.getAffineTransform(np.float32(x1[0:3, 0:2]), np.float32(x2[0:3, 0:2]))
+    init_value = np.array([0.9, 0.0, 0.0, 0.0, 0.0])
+    x = minimize(fun=model_linear_t, x0=init_value, args=(x1.T, x2.T), method='Nelder-Mead', tol=0.0001).x
+    matrix = np.array([[x[0], 0., x[3]],
+                       [0., x[0], x[4]],
+                       [x[1], x[2], 1.0]], dtype=np.float32)
+    print(matrix)
+    return matrix

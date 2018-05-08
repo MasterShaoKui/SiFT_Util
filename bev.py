@@ -1,5 +1,6 @@
 import numpy as np
 import config
+import itertools
 
 
 def get_bev_base_points_origin(bev_img):
@@ -43,6 +44,15 @@ def get_bev_base_points_origin_list(bev_img):
     return points
 
 
+def get_bev_base_points_dense_list(bev_img):
+    bev_w = bev_img.shape[1]
+    bev_h = bev_img.shape[0]
+    h_p = np.linspace(0, bev_h, int(bev_h / 20))
+    w_p = np.linspace(0, bev_w, int(bev_w / 20))
+    points = [x for x in itertools.product(h_p, w_p)]
+    return points
+
+
 def get_bev_base_points_middle_only(bev_img):
     margin_w = 50
     margin_h_up = 50
@@ -77,7 +87,7 @@ def get_bev_base_points(bev_img):
         points.append([middle + int(step * (i+1)), middle_h])
     points.append([bev_h - margin_h_down, middle_h])
     points += get_bev_base_points_origin_list(bev_img)
-    points += get_bev_base_points_origin_list(bev_img)
+    points += get_bev_base_points_dense_list(bev_img)
     points = np.flip(points, 1)
     return np.array(points)
 
